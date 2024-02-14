@@ -18,6 +18,11 @@ class PreorderPlugin {
 
         // Additional actions for product customization and email handling
         add_action( 'woocommerce_product_after_variable_attributes', [$this, 'customVariationsFields'], 10, 3 );
+
+        // Change button text for pre-order products
+        // add_filter('woocommerce_product_single_add_to_cart_text', [$this, ' change_preorder_single_add_to_cart_text'], 10, 3 );
+
+        ////////
         add_action( 'woocommerce_product_options_stock_status', [$this, 'customSimpleFields'] );
         add_action( 'woocommerce_save_product_variation', [$this, 'customVariationsFieldsSave'], 10, 2 );
         add_action( 'woocommerce_process_product_meta', [$this, 'customSimpleFieldsSave'], 10, 2 );
@@ -121,7 +126,7 @@ class PreorderPlugin {
         if ($preorder_products->have_posts()) {
             while ($preorder_products->have_posts()) {
                 $preorder_products->the_post();
-
+                
                 $preorder_available_date = get_post_meta(get_the_ID(), '_preorder_available_date', true);
                 $preorder_end_date = get_post_meta(get_the_ID(), '_preorder_end_date', true);
 
@@ -224,6 +229,26 @@ class PreorderPlugin {
         );
         echo '</div>';
     }
+
+ 
+    // public function change_preorder_single_add_to_cart_text($text) {
+    //     global $product;
+    
+    //     // Check if the product is a pre-order
+    //     $is_preorder = $product->get_meta('_is_preorder', true);
+    
+    //     // Change button text if the product is a pre-order
+    //     if ($is_preorder === 'yes') {
+    //         $text = __('Pre Order Now!', 'woocommerce');
+    //     }
+    
+    //     return $text;
+    // }
+
+
+
+
+
 
     // Callback function to add custom fields for simple products
     public function customSimpleFields() {
