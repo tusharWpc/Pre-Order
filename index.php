@@ -27,6 +27,9 @@ class PreorderPlugin {
         add_action( 'init', [$this, 'make_preorder_products_available'] );
         add_action( 'woocommerce_checkout_order_processed', [$this, 'send_admin_email_for_preorder_product'], 10, 1 );
         add_action( 'woocommerce_order_status_completed', [$this, 'send_customer_email_for_preorder_product'], 10, 1 );
+
+        // New action for setting a different fixed price for pre-order products
+        add_action( 'woocommerce_before_calculate_totals', [$this, 'set_preorder_product_price'], 10, 1 );
     }
 
     // Add a menu item for your plugin in the dashboard
@@ -148,16 +151,19 @@ class PreorderPlugin {
         );
 
         $preorder_products = new \WP_Query($args);
-
+        
         if ($preorder_products->have_posts()) {
             while ($preorder_products->have_posts()) {
                 $preorder_products->the_post();
-
-                // Add code here to make pre-order products available
-                // For example, you can update post status to 'publish'
-                // and reset pre-order fields like _is_preorder, _preorder_available_date, _preorder_end_date
+    
+                $product_id = get_the_ID();
+    
+                // Update product status to 'publish' or any other appropriate status
+                $product = wc_get_product($product_id);
+                $product->set_status('publish');
+                $product->save();
             }
-
+    
             wp_reset_postdata();
         }
     }
@@ -202,6 +208,7 @@ class PreorderPlugin {
         }
     }
 
+    // Callback function to add custom fields for variations
     public function customVariationsFields( $loop, $variation_data, $variation ) {
         echo '<div class="options_group form-row form-row-full">';
         woocommerce_wp_text_input(
@@ -218,6 +225,7 @@ class PreorderPlugin {
         echo '</div>';
     }
 
+    // Callback function to add custom fields for simple products
     public function customSimpleFields() {
         echo '<div class="options_group form-row form-row-full hide_if_variable">';
         woocommerce_wp_checkbox(
@@ -250,6 +258,18 @@ class PreorderPlugin {
                 'value'       => get_post_meta( get_the_ID(), '_preorder_end_date', true ),
             ]
         );
+
+        // Add field for pre-order price
+        woocommerce_wp_text_input(
+            [
+                'id'          => '_preorder_price',
+                'label'       => __( 'Pre Order Price', 'pre-orders-for-woocommerce' ),
+                'desc_tip'    => true,
+                'description' => __( 'Set a different fixed price for pre-order.', 'pre-orders-for-woocommerce' ),
+                'value'       => get_post_meta( get_the_ID(), '_preorder_price', true ),
+            ]
+        );
+
         echo '</div>';
         echo '<div class="options_group form-row form-row-full hide_if_simple"></div>';
     }
@@ -262,6 +282,7 @@ class PreorderPlugin {
         wp_add_inline_script( 'jquery-ui-datepicker', 'jQuery(function($) { $(".datepicker").datepicker(); });' );
     }
     
+    // Save custom fields for variations
     public function customVariationsFieldsSave( $post_id ) {
         $product = wc_get_product( $post_id );
         $is_preorder_variation = isset( $_POST['_is_preorder_' . $post_id] ) ? 'yes' : 'no';
@@ -273,6 +294,7 @@ class PreorderPlugin {
         $product->save();
     }
 
+    // Save custom fields for simple products
     public function customSimpleFieldsSave( $post_id ) {
         $product = wc_get_product( $post_id );
         $is_preorder = isset( $_POST['_is_preorder'] ) ? 'yes' : 'no';
@@ -283,8 +305,41 @@ class PreorderPlugin {
 
             $preorder_end_date = isset( $_POST['_preorder_end_date'] ) ? $_POST['_preorder_end_date'] : '';
             $product->update_meta_data( '_preorder_end_date', $preorder_end_date );
+
+            // Save pre-order price
+            $preorder_price = isset( $_POST['_preorder_price'] ) ? $_POST['_preorder_price'] : '';
+            $product->update_meta_data( '_preorder_price', $preorder_price );
         }
         $product->save();
+    }
+
+    // Set pre-order product price
+    public function set_preorder_product_price( $cart ) {
+        if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+            return;
+        }
+
+        if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
+            return;
+        }
+
+        // Loop through cart items
+        foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+            $product = $cart_item['data'];
+
+            // Check if the product is a pre-order
+            $is_preorder = $product->get_meta( '_is_preorder', true );
+
+            if ( $is_preorder === 'yes' ) {
+                // Get the pre-order price
+                $preorder_price = $product->get_meta( '_preorder_price', true );
+
+                if ( ! empty( $preorder_price ) ) {
+                    // Set the pre-order price for the product
+                    $product->set_price( $preorder_price );
+                }
+            }
+        }
     }
 }
 
