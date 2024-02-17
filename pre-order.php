@@ -106,27 +106,27 @@ class WooCommerce_Preorder_Button_Text {
     // Enqueue JavaScript to show/hide fields/buttons based on checkbox state
     public function show_hide_preorder_fields() {
         ?>
-        <script>
-        jQuery(document).ready(function($) {
-            var checkbox = $('#_is_pre_order');
-            var preorderFields = $('.pre-order-fields');
+<script>
+jQuery(document).ready(function($) {
+    var checkbox = $('#_is_pre_order');
+    var preorderFields = $('.pre-order-fields');
 
-            // Show/hide fields on checkbox change
-            checkbox.change(function() {
-                if (checkbox.is(':checked')) {
-                    preorderFields.slideDown();
-                } else {
-                    preorderFields.slideUp();
-                }
-            });
+    // Show/hide fields on checkbox change
+    checkbox.change(function() {
+        if (checkbox.is(':checked')) {
+            preorderFields.slideDown();
+        } else {
+            preorderFields.slideUp();
+        }
+    });
 
-            // Trigger change event on page load if checkbox is checked
-            if (checkbox.is(':checked')) {
-                preorderFields.show();
-            }
-        });
-        </script>
-        <?php
+    // Trigger change event on page load if checkbox is checked
+    if (checkbox.is(':checked')) {
+        preorderFields.show();
+    }
+});
+</script>
+<?php
     }
 
     // Save custom fields data when the product is saved
@@ -170,6 +170,9 @@ class WooCommerce_Preorder_Button_Text {
             }
             
             $text = __('Pre-order Now', 'pre-order');
+            
+            // Add action to send email when pre-order is placed
+            add_action('woocommerce_order_status_pending_to_processing_notification', array($this, 'send_preorder_confirmation_email'), 10, 2);
         }
 
         return $text;
@@ -206,17 +209,37 @@ class WooCommerce_Preorder_Button_Text {
         return $price;
     }
 
-    // Modify the product price HTML for pre-order products
-    public function custom_preorder_price_html($price, $product) {
-        $pre_order_price = get_post_meta($product->get_id(), '_pre_order_price', true);
-        
-        if ($pre_order_price !== '') {
+    
+// Modify the product price HTML for pre-order products
+public function custom_preorder_price_html($price, $product) {
+    $pre_order_price = get_post_meta($product->get_id(), '_pre_order_price', true);
+    $pre_order_discount = get_post_meta($product->get_id(), '_pre_order_discount', true);
+    
+    if ($pre_order_price !== '') {
+        if ($pre_order_discount !== '') {
+            $discounted_price = $pre_order_price - ($pre_order_price * $pre_order_discount / 100);
+            $discount_price_html = wc_price($discounted_price);
+            $price_html = wc_price($pre_order_price);
+            
+            // Combine pre-order price and discount price HTML
+            $price = sprintf(
+                __('Pre-order Price: %s <br> Discounted Price: %s', 'pre-order'),
+                $price_html,
+                $discount_price_html
+            );
+        } else {
+            // Display only pre-order price if no discount is set
             $price = wc_price($pre_order_price);
-            $price .= ' <small class="preorder-text">' . __('(Pre-order Price)', 'pre-order') . '</small>';
         }
         
-        return $price;
+        // Add small text indicating pre-order price
+        $price .= ' <small class="preorder-text">' . __('(Pre-order Price)', 'pre-order') . '</small>';
     }
+    
+    return $price;
+}
+
+
 
     // Schedule a task to update product availability when pre-order period ends
     public function schedule_preorder_availability_update() {
@@ -250,6 +273,32 @@ class WooCommerce_Preorder_Button_Text {
                 }
             }
             wp_reset_postdata();
+        }
+    }
+
+    // Send pre-order confirmation email to customer
+    public function send_preorder_confirmation_email($order_id, $order) {
+        // Check if the order contains pre-order products
+        $preorder_products = false;
+        foreach ($order->get_items() as $item) {
+            if ('yes' === get_post_meta($item->get_product_id(), '_is_pre_order', true)) {
+                $preorder_products = true;
+                break;
+            }
+        }
+
+        if ($preorder_products) {
+            // Get customer email
+            $email = $order->get_billing_email();
+            
+            // Email subject
+            $subject = __('Pre-order Confirmation', 'pre-order');
+            
+            // Email body
+            $message = __('Thank you for placing a pre-order. Your order will be processed as soon as the product becomes available.', 'pre-order');
+            
+            // Send email
+            wp_mail($email, $subject, $message);
         }
     }
 }
