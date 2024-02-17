@@ -105,6 +105,7 @@ function custom_preorder_button_text($text) {
         // Apply the pre-order price if set
         if ($pre_order_price !== '') {
             $product->set_price($pre_order_price);
+            add_filter( 'woocommerce_get_price_html', 'custom_preorder_price_html', 10, 2 );
         }
         
         // Apply the pre-order discount if set
@@ -120,6 +121,10 @@ function custom_preorder_button_text($text) {
 }
 add_filter('woocommerce_product_single_add_to_cart_text', 'custom_preorder_button_text', 10, 1);
 add_filter('woocommerce_product_add_to_cart_text', 'custom_preorder_button_text', 10, 1);
+
+function custom_preorder_price_html( $price, $product ) {
+    return wc_price( $product->get_price() ) . ' <small class="preorder-text">' . __('(Pre-order Price)', 'pre-order') . '</small>';
+}
 
 // Schedule a task to update product availability when pre-order period ends
 function schedule_preorder_availability_update() {
