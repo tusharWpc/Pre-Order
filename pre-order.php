@@ -3,7 +3,7 @@
 Plugin Name: WooCommerce Preorder Button Text 
 Description: Change the Add to Cart button text for pre-order products and add pre-order options.
 Version: 1.0.3
-Author: Your Name
+Author: NF Tushar
 */
 
 // Add custom fields to the product editor for pre-order options
@@ -20,7 +20,15 @@ function add_preorder_fields() {
         'desc_tip'      => true,
     ) );
 
+    // Other fields/buttons hidden by default
+    $style = 'style="display: none;"';
+    
+    if ( get_post_meta( $post->ID, '_is_pre_order', true ) === 'yes' ) {
+        $style = ''; // Show fields/buttons if the product is set as a pre-order
+    }
+
     // Date selection for pre-order products
+    echo '<div class="pre-order-fields" ' . $style . '>';
     woocommerce_wp_text_input( array(
         'id'            => '_pre_order_date',
         'label'         => __( 'Pre-order Date', 'pre-order' ),
@@ -74,9 +82,38 @@ function add_preorder_fields() {
         ),
     ) );
 
-    echo '</div>';
+    echo '</div>'; // End .pre-order-fields
+
+    echo '</div>'; // End .options_group
 }
 add_action( 'woocommerce_product_options_general_product_data', 'add_preorder_fields' );
+
+// Enqueue JavaScript to show/hide fields/buttons based on checkbox state
+function show_hide_preorder_fields() {
+    ?>
+<script>
+jQuery(document).ready(function($) {
+    var checkbox = $('#_is_pre_order');
+    var preorderFields = $('.pre-order-fields');
+
+    // Show/hide fields on checkbox change
+    checkbox.change(function() {
+        if (checkbox.is(':checked')) {
+            preorderFields.slideDown();
+        } else {
+            preorderFields.slideUp();
+        }
+    });
+
+    // Trigger change event on page load if checkbox is checked
+    if (checkbox.is(':checked')) {
+        preorderFields.show();
+    }
+});
+</script>
+<?php
+}
+add_action('admin_footer', 'show_hide_preorder_fields');
 
 // Save custom fields data when the product is saved
 function save_preorder_fields($post_id) {
