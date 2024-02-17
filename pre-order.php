@@ -106,6 +106,7 @@ class WooCommerce_Preorder_Button_Text {
     // Enqueue JavaScript to show/hide fields/buttons based on checkbox state
     public function show_hide_preorder_fields() {
         ?>
+        
 <script>
 jQuery(document).ready(function($) {
     var checkbox = $('#_is_pre_order');
@@ -126,7 +127,8 @@ jQuery(document).ready(function($) {
     }
 });
 </script>
-<?php
+<?php 
+
     }
 
     // Save custom fields data when the product is saved
@@ -150,6 +152,7 @@ jQuery(document).ready(function($) {
         $pre_order_discount = isset($_POST['_pre_order_discount']) ? wc_format_decimal($_POST['_pre_order_discount']) : '';
         update_post_meta($post_id, '_pre_order_discount', $pre_order_discount);
     }
+
 
     // Hook into WooCommerce to modify the Add to Cart button text and handle pre-order price
     public function custom_preorder_button_text($text) {
