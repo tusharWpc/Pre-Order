@@ -6,185 +6,163 @@ Version: 1.0.1
 Author: Your Name
 */
 
-class WooCommerce_Preorder_Plugin {
-    
-    public function __construct() {
-        add_action('woocommerce_product_options_general_product_data', array($this, 'add_preorder_fields'));
-        add_filter('woocommerce_product_single_add_to_cart_text', array($this, 'custom_preorder_button_text'), 10, 1);
-        add_filter('woocommerce_product_add_to_cart_text', array($this, 'custom_preorder_button_text'), 10, 1);
-        add_action('wp', array($this, 'schedule_preorder_availability_update'));
-        add_action('update_preorder_availability', array($this, 'update_preorder_availability'));
-        add_action('woocommerce_order_status_processing', array($this, 'send_preorder_purchase_notification'), 10, 1);
-        add_action('woocommerce_process_product_meta', array($this, 'handle_dynamic_inventory'));
-    }
+// Add custom fields to the product editor for pre-order options
+function add_preorder_fields() {
+    global $woocommerce, $post;
 
-    // Add custom fields to the product editor for pre-order options
-    public function add_preorder_fields() {
-        echo '<div class="options_group">';
-        
-        // Checkbox for marking a product as a pre-order
-        woocommerce_wp_checkbox( array(
-            'id'            => '_is_pre_order',
-            'label'         => __( 'Offer as Pre-order', 'woocommerce' ),
-            'description'   => __( 'Check this if you want to offer this product as a pre-order.', 'woocommerce' ),
-            'desc_tip'      => true,
-        ) );
-        
-        // Date selection for pre-order products
-        woocommerce_wp_text_input( array(
-            'id'            => '_pre_order_date',
-            'label'         => __( 'Pre-order Date', 'woocommerce' ),
-            'placeholder'   => __( 'YYYY-MM-DD', 'woocommerce' ),
-            'description'   => __( 'Select the date when this pre-order will be available.', 'woocommerce' ),
-            'desc_tip'      => true,
-            'type'          => 'date',
-        ) );
-        
-        // Dynamic checkbox for dynamic inventory
-        woocommerce_wp_checkbox( array(
-            'id'            => '_dynamic_inventory',
-            'label'         => __( 'Dynamic Inventory', 'woocommerce' ),
-            'description'   => __( 'Check this if you want to enable dynamic inventory for this product.', 'woocommerce' ),
-            'desc_tip'      => true,
-        ) );
-        
-        // Text input for pre-order price
-        woocommerce_wp_text_input( array(
-            'id'            => '_pre_order_price',
-            'label'         => __( 'Pre-order Price', 'woocommerce' ),
-            'placeholder'   => __( 'Enter pre-order price', 'woocommerce' ),
-            'description'   => __( 'Enter the price for this product when it is in pre-order mode.', 'woocommerce' ),
-            'desc_tip'      => true,
-            'type'          => 'number',
-            'custom_attributes' => array(
-                'step' => 'any',
-            ),
-        ) );
-        
-        // Text input for pre-order discount
-        woocommerce_wp_text_input( array(
-            'id'            => '_pre_order_discount',
-            'label'         => __( 'Pre-order Discount', 'woocommerce' ),
-            'placeholder'   => __( 'Enter pre-order discount', 'woocommerce' ),
-            'description'   => __( 'Enter the discount for this product during the pre-order period.', 'woocommerce' ),
-            'desc_tip'      => true,
-            'type'          => 'number',
-            'custom_attributes' => array(
-                'step' => 'any',
-            ),
-        ) );
-        
-        echo '</div>';
-    }
+    echo '<div class="options_group">';
 
-    // Callback function to modify the Add to Cart button text and handle pre-order price
-    public function custom_preorder_button_text($text) {
-        global $product;
+    // Checkbox for marking a product as a pre-order
+    woocommerce_wp_checkbox( array(
+        'id'            => '_is_pre_order',
+        'label'         => __( 'Offer as Pre-order', 'pre-order' ),
+        'description'   => __( 'Check this if you want to offer this product as a pre-order.', 'pre-order' ),
+        'desc_tip'      => true,
+    ) );
+
+    // Date selection for pre-order products
+    woocommerce_wp_text_input( array(
+        'id'            => '_pre_order_date',
+        'label'         => __( 'Pre-order Date', 'pre-order' ),
+        'placeholder'   => __( 'YYYY-MM-DD', 'pre-order' ),
+        'description'   => __( 'Select the date when this pre-order will be available.', 'pre-order' ),
+        'desc_tip'      => true,
+        'type'          => 'date',
+    ) );
+
+    // Dynamic checkbox for dynamic inventory
+    woocommerce_wp_checkbox( array(
+        'id'            => '_dynamic_inventory',
+        'label'         => __( 'Dynamic Inventory', 'pre-order' ),
+        'description'   => __( 'Check this if you want to enable dynamic inventory for this product.', 'pre-order' ),
+        'desc_tip'      => true,
+    ) );
+
+    // Text input for pre-order price
+    woocommerce_wp_text_input( array(
+        'id'            => '_pre_order_price',
+        'label'         => __( 'Pre-order Price', 'pre-order' ),
+        'placeholder'   => __( 'Enter pre-order price', 'pre-order' ),
+        'description'   => __( 'Enter the price for this product when it is in pre-order mode.', 'pre-order' ),
+        'desc_tip'      => true,
+        'type'          => 'number',
+        'custom_attributes' => array(
+            'step' => 'any',
+        ),
+    ) );
+
+    // Text input for pre-order discount
+    woocommerce_wp_text_input( array(
+        'id'            => '_pre_order_discount',
+        'label'         => __( 'Pre-order Discount', 'pre-order' ),
+        'placeholder'   => __( 'Enter pre-order discount', 'pre-order' ),
+        'description'   => __( 'Enter the discount for this product during the pre-order period.', 'pre-order' ),
+        'desc_tip'      => true,
+        'type'          => 'number',
+        'custom_attributes' => array(
+            'step' => 'any',
+        ),
+    ) );
+
+    echo '</div>';
+}
+add_action( 'woocommerce_product_options_general_product_data', 'add_preorder_fields' );
+
+// Save custom fields data when the product is saved
+function save_preorder_fields($post_id) {
+    // Save checkbox data
+    $is_pre_order = isset($_POST['_is_pre_order']) ? 'yes' : 'no';
+    update_post_meta($post_id, '_is_pre_order', $is_pre_order);
+
+    // Save date input data
+    $pre_order_date = isset($_POST['_pre_order_date']) ? $_POST['_pre_order_date'] : '';
+    update_post_meta($post_id, '_pre_order_date', $pre_order_date);
+
+    // Save dynamic inventory data
+    $dynamic_inventory = isset($_POST['_dynamic_inventory']) ? 'yes' : 'no';
+    update_post_meta($post_id, '_dynamic_inventory', $dynamic_inventory);
+
+    // Save pre-order price data
+    $pre_order_price = isset($_POST['_pre_order_price']) ? $_POST['_pre_order_price'] : '';
+    update_post_meta($post_id, '_pre_order_price', $pre_order_price);
+
+    // Save pre-order discount data
+    $pre_order_discount = isset($_POST['_pre_order_discount']) ? $_POST['_pre_order_discount'] : '';
+    update_post_meta($post_id, '_pre_order_discount', $pre_order_discount);
+}
+add_action('woocommerce_process_product_meta', 'save_preorder_fields');
+
+// Hook into WooCommerce to modify the Add to Cart button text and handle pre-order price
+function custom_preorder_button_text($text) {
+    global $product;
+
+    // Check if the product is a pre-order
+    if ($product && $product->is_type('simple') && 'yes' === get_post_meta($product->get_id(), '_is_pre_order', true)) {
+        // Get pre-order price and discount if set, otherwise use regular price
+        $pre_order_price = get_post_meta($product->get_id(), '_pre_order_price', true);
+        $pre_order_discount = get_post_meta($product->get_id(), '_pre_order_discount', true);
         
-        // Check if the product is a pre-order
-        if ($product && $product->is_type('simple') && 'yes' === get_post_meta($product->get_id(), '_is_pre_order', true)) {
-            // Get pre-order price and discount if set, otherwise use regular price
-            $pre_order_price = get_post_meta($product->get_id(), '_pre_order_price', true);
-            $pre_order_discount = get_post_meta($product->get_id(), '_pre_order_discount', true);
-            
-            // Debugging: Log pre-order price and discount
-            error_log('Pre-order Price: ' . $pre_order_price);
-            error_log('Pre-order Discount: ' . $pre_order_discount);
-            
-            // If both pre-order price and discount are set, calculate discounted price
-            if ($pre_order_price !== '' && $pre_order_discount !== '') {
-                // Convert pre-order price and discount to float for calculation
-                $pre_order_price = floatval($pre_order_price);
-                $pre_order_discount = floatval($pre_order_discount);
-                
-                // Calculate discounted price
-                $discounted_price = $pre_order_price - ($pre_order_price * $pre_order_discount / 100);
-                
-                // Set the discounted price for the product
-                $product->set_price($discounted_price);
-            }
-            
-            $text = __('Hi, Pre-order Now', 'woocommerce'); // Change the button text for pre-orders
+        // Apply the pre-order price if set
+        if ($pre_order_price !== '') {
+            $product->set_price($pre_order_price);
         }
         
-        return $text;
-    }
-
-    // Schedule a task to update product availability when pre-order period ends
-    public function schedule_preorder_availability_update() {
-        if (!wp_next_scheduled('update_preorder_availability')) {
-            wp_schedule_event(time(), 'daily', 'update_preorder_availability');
+        // Apply the pre-order discount if set
+        if ($pre_order_discount !== '') {
+            $discounted_price = $product->get_regular_price() - ($product->get_regular_price() * $pre_order_discount / 100);
+            $product->set_sale_price($discounted_price);
         }
-    }
-
-    // Callback function to update product availability
-    public function update_preorder_availability() {
-        // Get all pre-order products
-        $preorder_products = new WP_Query(array(
-            'post_type'      => 'product',
-            'posts_per_page' => -1,
-            'meta_query'     => array(
-                array(
-                    'key'     => '_is_pre_order',
-                    'value'   => 'yes',
-                    'compare' => '=',
-                ),
-            ),
-        ));
         
-        if ($preorder_products->have_posts()) {
-            while ($preorder_products->have_posts()) {
-                $preorder_products->the_post();
-                $product_id = get_the_ID();
-                $pre_order_date = get_post_meta($product_id, '_pre_order_date', true);
-                
-                // If pre-order date has passed, update product availability
-                if (strtotime($pre_order_date) < time()) {
-                    update_post_meta($product_id, '_is_pre_order', 'no');
-                }
-            }
-            wp_reset_postdata();
-        }
+        $text = __('Pre-order Now', 'pre-order'); // Change the button text for pre-orders
     }
 
-    // Hook into WooCommerce order processing to send email notification for pre-order products
-    public function send_preorder_purchase_notification($order_id) {
-        // Get the order object
-        $order = wc_get_order($order_id);
-        
-        // Loop through order items to check if any are pre-order products
-        foreach ($order->get_items() as $item_id => $item) {
-            $product_id = $item->get_product_id();
-            
-            // Check if the product is a pre-order
-            if ('yes' === get_post_meta($product_id, '_is_pre_order', true)) {
-                $product_name = $item->get_name();
-                $product_qty = $item->get_quantity();
-                
-                // Get the admin email
-                $admin_email = get_option('admin_email');
-                
-                // Email subject
-                $subject = 'Pre-order Product Purchase Notification';
-                
-                // Email body
-                $body = 'A pre-order product has been purchased:' . PHP_EOL;
-                $body .= 'Product: ' . $product_name . PHP_EOL;
-                $body .= 'Quantity: ' . $product_qty . PHP_EOL;
-                $body .= 'Order ID: ' . $order_id . PHP_EOL;
-                
-                // Send the email
-                wp_mail($admin_email, $subject, $body);
-                break; // Stop checking further items once a pre-order is found
-            }
-        }
-    }
+    return $text;
+}
+add_filter('woocommerce_product_single_add_to_cart_text', 'custom_preorder_button_text', 10, 1);
+add_filter('woocommerce_product_add_to_cart_text', 'custom_preorder_button_text', 10, 1);
 
-    // Hook into WooCommerce to handle dynamic inventory
-    public function handle_dynamic_inventory($product_id) {
-        $dynamic_inventory = isset($_POST['_dynamic_inventory']) ? 'yes' : 'no';
-        update_post_meta($product_id, '_dynamic_inventory', $dynamic_inventory);
+// Schedule a task to update product availability when pre-order period ends
+function schedule_preorder_availability_update() {
+    if (!wp_next_scheduled('update_preorder_availability')) {
+        wp_schedule_event(time(), 'daily', 'update_preorder_availability');
     }
 }
+add_action('wp', 'schedule_preorder_availability_update');
 
-new WooCommerce_Preorder_Plugin();
+// Callback function to update product availability
+function update_preorder_availability() {
+    // Get all pre-order products
+    $preorder_products = new WP_Query(array(
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+        'meta_query'     => array(
+            array(
+                'key'     => '_is_pre_order',
+                'value'   => 'yes',
+                'compare' => '=',
+            ),
+        ),
+    ));
+
+    if ($preorder_products->have_posts()) {
+        while ($preorder_products->have_posts()) {
+            $preorder_products->the_post();
+            $product_id = get_the_ID();
+            $pre_order_date = get_post_meta($product_id, '_pre_order_date', true);
+
+            // If pre-order date has passed, update product availability
+            if (strtotime($pre_order_date) < time()) {
+                update_post_meta($product_id, '_is_pre_order', 'no');
+            }
+        }
+        wp_reset_postdata();
+    }
+}
+add_action('update_preorder_availability', 'update_preorder_availability');
+
+// Hook into WooCommerce to handle dynamic inventory
+function handle_dynamic_inventory($product_id) {
+    $dynamic_inventory = isset($_POST['_dynamic_inventory']) ? 'yes' : 'no';
+    update_post_meta($product_id, '_dynamic_inventory', $dynamic_inventory);
+}
+add_action('woocommerce_process_product_meta', 'handle_dynamic_inventory');
