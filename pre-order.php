@@ -1,4 +1,4 @@
-<?php
+<?php 
 /*
 Plugin Name: WooCommerce Preorder Button Text 
 Description: Change the Add to Cart button text for pre-order products and add pre-order options.
@@ -198,3 +198,22 @@ function display_preorder_date_and_time() {
     }
 }
 add_action('woocommerce_before_add_to_cart_form', 'display_preorder_date_and_time', 15);
+
+// Modify the product price for pre-order products
+function custom_preorder_price( $price, $product ) {
+    // Check if the product is marked as a pre-order
+    if ( 'yes' === get_post_meta($product->get_id(), '_is_pre_order', true) ) {
+        $pre_order_price = get_post_meta( $product->get_id(), '_pre_order_price', true );
+        
+        // If a pre-order price is set, use it
+        if ( ! empty( $pre_order_price ) ) {
+            $price = $pre_order_price;
+        }
+    }
+    
+    return $price;
+}
+add_filter( 'woocommerce_product_get_price', 'custom_preorder_price', 10, 2 );
+add_filter( 'woocommerce_product_get_regular_price', 'custom_preorder_price', 10, 2 );
+add_filter( 'woocommerce_product_variation_get_regular_price', 'custom_preorder_price', 10, 2 );
+add_filter( 'woocommerce_product_variation_get_price', 'custom_preorder_price', 10, 2 );
